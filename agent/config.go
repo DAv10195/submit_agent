@@ -1,5 +1,6 @@
 package agent
 
+// agent configuration
 type Config struct {
 	SubmitServerHost 		string
 	SubmitServerPort 		int

@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// handle keepalive response by advancing the read deadline on the connection to the submit server by one minute
 func (a *Agent) handleKeepaliveResponse(_ []byte) {
 	newReadDeadLine := time.Now().Add(time.Minute)
 	if err := a.endpoint.conn.SetReadDeadline(newReadDeadLine); err != nil {

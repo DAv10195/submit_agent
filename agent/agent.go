@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+// agent
 type Agent struct {
 	id			string
 	encryption  encryption.Encryption
@@ -25,7 +26,9 @@ type Agent struct {
 	endpoint 	*serverEndpoint
 }
 
+// create a new agent
 func NewAgent(cfg *Config) (*Agent, error) {
+	// initialize encryption
 	keyFilePath := filepath.Join(cfg.CacheDir, encryptionKeyFileName)
 	if err := encryption.GenerateAesKeyFile(keyFilePath); err != nil {
 		return nil, fmt.Errorf("error initalizing encryption key file: %v", err)
@@ -34,12 +37,14 @@ func NewAgent(cfg *Config) (*Agent, error) {
 	if err := a.handleConfigEncryption(); err != nil {
 		return nil, fmt.Errorf("error handling config encryption: %v", err)
 	}
+	// get agent id
 	if err := a.resolveAgentId(filepath.Join(cfg.CacheDir, agentIdFileName)); err != nil {
 		return nil, fmt.Errorf("error resolving agent id: %v", err)
 	}
 	return a, nil
 }
 
+// encrypt passwords in memory and in the config file, if required
 func (a *Agent) handleConfigEncryption() error {
 	var writeToConfRequired bool
 	var err error
@@ -145,6 +150,7 @@ func (a *Agent) resolveAgentId(idFilePath string) error {
 	return nil
 }
 
+// send a udp packet to the Google DNS servers in order to get the preferred outbound ip of the host networking
 func (a *Agent) getOutboundIp() (string, error) {
 	conn, err := net.Dial(udp, googleDnsServer)
 	if err != nil {
@@ -157,6 +163,7 @@ func (a *Agent) getOutboundIp() (string, error) {
 	return outboundIp.To4().String(), nil
 }
 
+// create a new keepalive message
 func (a *Agent) newKeepalive() (*submitws.Message, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -182,6 +189,7 @@ func (a *Agent) newKeepalive() (*submitws.Message, error) {
 	return msg, nil
 }
 
+// send keepalive messages to the submit server
 func (a *Agent) keepaliveLoop(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	logger.Info("starting keepalive loop")
@@ -209,6 +217,7 @@ func (a *Agent) keepaliveLoop(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
+// run the agent
 func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	// TODO: add option for TLS
@@ -231,6 +240,7 @@ func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 			keepaliveCtxCancel()
 		}
 	}()
+	// try initializing the connection loop each second
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
@@ -242,6 +252,8 @@ func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 						keepaliveCtxCancel = nil
 					}
 					a.endpoint.connect(connInterval)
+					// once the above call to connect is done, it means that the agent is now connected to the submit
+					// server, so let's start 2 goroutines - one for reading and for sending keepalive messages
 					keepaliveCtx, keepaliveCtxCancel = context.WithCancel(ctx)
 					agentWg.Add(2)
 					go a.keepaliveLoop(keepaliveCtx, agentWg)
