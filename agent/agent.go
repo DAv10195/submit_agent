@@ -224,7 +224,7 @@ func (a *Agent) keepaliveLoop(ctx context.Context, wg *sync.WaitGroup) {
 func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	// TODO: add option for TLS
-	url := fmt.Sprintf("ws://%s:%d/%s", a.config.SubmitServerHost, a.config.SubmitServerPort, submitws.Agents)
+	url := fmt.Sprintf("ws://%s:%d/%s/endpoint", a.config.SubmitServerHost, a.config.SubmitServerPort, submitws.Agents)
 	a.endpoint = &serverEndpoint{
 		id: a.id,
 		url: url,
