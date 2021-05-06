@@ -177,6 +177,9 @@ func (a *Agent) newKeepalive() (*submitws.Message, error) {
 		OsType:    runtime.GOOS,
 		IpAddress: ip,
 		Hostname:  hostname,
+		Architecture: runtime.GOARCH,
+		// TODO: fill real number of running tasks
+		NumRunningTasks: 0,
 	}
 	keepalivePayload, err := json.Marshal(keepalive)
 	if err != nil {
