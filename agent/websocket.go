@@ -99,7 +99,7 @@ func (e *serverEndpoint) write(msg *submitws.Message) {
 	if err := e.conn.WriteMessage(websocket.BinaryMessage, msg.ToBinary()); err != nil {
 		logger.WithError(err).Errorf("error sending message to server at %s: %v", e.url, err)
 		if err := e.conn.Close(); err != nil {
-			logger.WithError(err).Errorf("error closing connection to server at %s after write error: err", e.url, err)
+			logger.WithError(err).Errorf("error closing connection to server at %s after write error: %v", e.url, err)
 		}
 		e.connected = false
 	}
