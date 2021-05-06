@@ -254,13 +254,16 @@ func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 						keepaliveCtxCancel()
 						keepaliveCtxCancel = nil
 					}
-					a.endpoint.connect(connInterval)
-					// once the above call to connect is done, it means that the agent is now connected to the submit
-					// server, so let's start 2 goroutines - one for reading and for sending keepalive messages
-					keepaliveCtx, keepaliveCtxCancel = context.WithCancel(ctx)
-					agentWg.Add(2)
-					go a.keepaliveLoop(keepaliveCtx, agentWg)
-					go a.endpoint.readLoop(agentWg)
+					a.endpoint.connect(connInterval, ctx)
+					if a.endpoint.isConnected() {
+						// once the above call to connect is done, it means that the agent is now connected to the submit
+						// server (in case the given context wasn't done...), so let's start 2 goroutines - one for reading
+						// and one for sending keepalive messages
+						keepaliveCtx, keepaliveCtxCancel = context.WithCancel(ctx)
+						agentWg.Add(2)
+						go a.keepaliveLoop(keepaliveCtx, agentWg)
+						go a.endpoint.readLoop(agentWg)
+					}
 				}
 			case <- ctx.Done():
 				a.endpoint.close()

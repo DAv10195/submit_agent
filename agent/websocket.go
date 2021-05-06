@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"github.com/DAv10195/submit_commons/encryption"
@@ -51,7 +52,7 @@ func (e *serverEndpoint) _connect() error {
 }
 
 // connect to the submit server. The given interval will be the time waited between connection attempts
-func (e *serverEndpoint) connect(interval time.Duration) {
+func (e *serverEndpoint) connect(interval time.Duration, ctx context.Context) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	logger.Infof("connecting to %s...", e.url)
@@ -63,6 +64,9 @@ func (e *serverEndpoint) connect(interval time.Duration) {
 				return
 			} else {
 				logger.WithError(err).Errorf("failed connecting to %s", e.url)
+				if ctx.Err() != nil {
+					break
+				}
 				time.Sleep(interval)
 			}
 		}
