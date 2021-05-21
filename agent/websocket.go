@@ -131,6 +131,10 @@ func (e *serverEndpoint) readLoop(wg *sync.WaitGroup) {
 			logger.WithError(err).Warnf("invalid message sent from server at %s. Error parsing websocket message: %v", e.url, err)
 			continue
 		}
+		if e.handlers[msg.Type] == nil {
+			logger.WithError(err).Warnf("invalid message sent form server at %s. No handler for message with type == %s", e.url, msg.Type)
+			continue
+		}
 		go e.handlers[msg.Type](msg.Payload)
 	}
 }
