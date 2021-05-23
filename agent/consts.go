@@ -25,4 +25,8 @@ const (
 
 	flagServerPassword		= "submit-server-password"
 	flagFileServerPassword	= "submit-file-server-password"
+
+	queue					= "queue"
+	maxMsgBatchFromQueue	= 10
+	sendQueueInterval		= 3 * time.Second
 )

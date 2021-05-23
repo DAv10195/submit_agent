@@ -12,4 +12,5 @@ type Config struct {
 	SubmitFsPassword		string
 	CacheDir				string
 	ConfFile				string
+	MaxRunningTasks			int
 }

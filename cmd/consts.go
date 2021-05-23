@@ -16,6 +16,7 @@ const (
 	defPort					= 80
 	defUser					= "admin"
 	defPassword				= "admin"
+	defMaxRunningTasks		= 10
 
 	flagConfigFile        	= "config-file"
 	flagLogLevel          	= "log-level"
@@ -35,4 +36,6 @@ const (
 	flagFileServerPort		= "submit-file-server-port"
 	flagFileServerUser		= "submit-file-server-user"
 	flagFileServerPassword	= "submit-file-server-password"
+
+	flagMaxRunningTasks		= "max-running-tasks"
 )
