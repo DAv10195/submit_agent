@@ -53,7 +53,7 @@ func (e *TaskExecution) Execute() (string, error) {
 		}
 	}()
 	var timer *time.Timer
-	if e.Timeout >= 0 {
+	if e.Timeout > 0 {
 		timer = time.AfterFunc(time.Duration(e.Timeout) * time.Second, func() {
 			cancel()
 			errKillProc := killProcess(cmd)

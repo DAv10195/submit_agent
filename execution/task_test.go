@@ -8,7 +8,7 @@ import (
 func TestTaskExec(t *testing.T) {
 	te := &TaskExecution{
 		Command:      "echo agent",
-		Timeout:      0,
+		Timeout:      60,
 		Dependencies: nil,
 	}
 	output, err := te.Execute()

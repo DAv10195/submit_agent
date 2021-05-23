@@ -38,7 +38,7 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 	defer atomic.AddInt64(&a.numRunningTasks, -1)
 	tr := &submitws.TaskResponse{Handler: task.ResponseHandler, Task: task.ID}
 	te := &execution.TaskExecution{Command: task.Command, Timeout: task.Timeout, Dependencies: task.Dependencies}
-	logger.Info("executing task: %s", string(payload))
+	logger.Infof("executing task: %s", string(payload))
 	output, err := te.Execute()
 	if err != nil {
 		logger.WithError(err).Errorf("error executing task with id == %s", task.ID)
