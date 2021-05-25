@@ -8,6 +8,7 @@ import (
 	commons "github.com/DAv10195/submit_commons"
 	"github.com/DAv10195/submit_commons/encryption"
 	submitws "github.com/DAv10195/submit_commons/websocket"
+	"github.com/beeker1121/goque"
 	"io/ioutil"
 	"net"
 	"os"
@@ -15,15 +16,19 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 // agent
 type Agent struct {
-	id			string
-	encryption  encryption.Encryption
-	config		*Config
-	endpoint 	*serverEndpoint
+	id					string
+	encryption  		encryption.Encryption
+	config				*Config
+	endpoint 			*serverEndpoint
+	numRunningTasks		int64
+	maxTasksSemaphore	chan struct{}
+	messageQueue		*goque.Queue
 }
 
 // create a new agent
@@ -33,7 +38,14 @@ func NewAgent(cfg *Config) (*Agent, error) {
 	if err := encryption.GenerateAesKeyFile(keyFilePath); err != nil {
 		return nil, fmt.Errorf("error initalizing encryption key file: %v", err)
 	}
-	a := &Agent{config: cfg, encryption: &encryption.AesEncryption{KeyFilePath: keyFilePath}}
+	msgQ, err := goque.OpenQueue(filepath.Join(cfg.CacheDir, queue))
+	if err != nil {
+		return nil, fmt.Errorf("error intializing message queue: %v", err)
+	}
+	a := &Agent{config: cfg, encryption: &encryption.AesEncryption{KeyFilePath: keyFilePath}, messageQueue: msgQ}
+	if a.config.MaxRunningTasks > 0 {
+		a.maxTasksSemaphore = make(chan struct{}, a.config.MaxRunningTasks)
+	}
 	if err := a.handleConfigEncryption(); err != nil {
 		return nil, fmt.Errorf("error handling config encryption: %v", err)
 	}
@@ -178,8 +190,7 @@ func (a *Agent) newKeepalive() (*submitws.Message, error) {
 		IpAddress: ip,
 		Hostname:  hostname,
 		Architecture: runtime.GOARCH,
-		// TODO: fill real number of running tasks
-		NumRunningTasks: 0,
+		NumRunningTasks: int(atomic.LoadInt64(&a.numRunningTasks)),
 	}
 	keepalivePayload, err := json.Marshal(keepalive)
 	if err != nil {
@@ -220,9 +231,80 @@ func (a *Agent) keepaliveLoop(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
+// create a new message containing task responses
+func (a *Agent) newMessageFromQueue() (*submitws.Message, error) {
+	var responses []*submitws.TaskResponse
+	for i := 0; i < maxMsgBatchFromQueue && a.messageQueue.Length() > 0; i++ { // send at most a single segment size
+		taskRespItem, err := a.messageQueue.Dequeue()
+		if err != nil {
+			return nil, err
+		}
+		taskResp := &submitws.TaskResponse{}
+		if err := taskRespItem.ToObjectFromJSON(taskResp); err != nil {
+			return nil, err
+		}
+		responses = append(responses, taskResp)
+	}
+	if len(responses) == 0 {
+		return nil, nil
+	}
+	payload, err := json.Marshal(&submitws.TaskResponses{Responses: responses})
+	if err != nil {
+		return nil, err
+	}
+	msg, err := submitws.NewMessage(submitws.MessageTypeTaskResponses, payload)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+// send queued messages to the submit server
+func (a *Agent) sendLoop(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+	logger.Info("starting send loop")
+	qMsg, err := a.newMessageFromQueue()
+	if err != nil {
+		logger.WithError(err).Error("error creating queued message. stopping send loop")
+		return
+	}
+	if qMsg != nil {
+		logger.Info("send loop: sending queued messages")
+		a.endpoint.write(qMsg)
+	} else {
+		logger.Debug("send loop: no queued messages to send")
+	}
+	ticker := time.NewTicker(sendQueueInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <- ticker.C:
+			qMsg, err := a.newMessageFromQueue()
+			if err != nil {
+				logger.WithError(err).Error("error creating queued message. stopping send loop")
+				return
+			}
+			if qMsg != nil {
+				logger.Info("send loop: sending queued messages")
+				a.endpoint.write(qMsg)
+			} else {
+				logger.Debug("send loop: no queued messages to send")
+			}
+		case <- ctx.Done():
+			logger.Info("stopping send loop")
+			return
+		}
+	}
+}
+
 // run the agent
 func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+	defer func() {
+		if err := a.messageQueue.Close(); err != nil {
+			logger.WithError(err).Error("error closing message queue")
+		}
+	}()
 	// TODO: add option for TLS
 	url := fmt.Sprintf("ws://%s:%d/%s/endpoint", a.config.SubmitServerHost, a.config.SubmitServerPort, submitws.Agents)
 	a.endpoint = &serverEndpoint{
@@ -243,6 +325,13 @@ func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 			keepaliveCtxCancel()
 		}
 	}()
+	var sendCtx context.Context
+	var sendCtxCancel context.CancelFunc
+	defer func() {
+		if sendCtxCancel != nil {
+			sendCtxCancel()
+		}
+	}()
 	// try initializing the connection loop each second
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -254,14 +343,20 @@ func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 						keepaliveCtxCancel()
 						keepaliveCtxCancel = nil
 					}
+					if sendCtxCancel != nil {
+						sendCtxCancel()
+						sendCtxCancel = nil
+					}
 					a.endpoint.connect(connInterval, ctx)
 					if a.endpoint.isConnected() {
 						// once the above call to connect is done, it means that the agent is now connected to the submit
-						// server (in case the given context wasn't done...), so let's start 2 goroutines - one for reading
-						// and one for sending keepalive messages
+						// server (in case the given context wasn't done...), so let's start 3 goroutines - one for reading
+						// one for sending keepalive messages and one for sending queued messages
 						keepaliveCtx, keepaliveCtxCancel = context.WithCancel(ctx)
-						agentWg.Add(2)
+						sendCtx, sendCtxCancel = context.WithCancel(ctx)
+						agentWg.Add(3)
 						go a.keepaliveLoop(keepaliveCtx, agentWg)
+						go a.sendLoop(sendCtx, agentWg)
 						go a.endpoint.readLoop(agentWg)
 					}
 				}

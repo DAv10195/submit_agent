@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-type serverMessageHandler func([]byte)
+type serverMessageHandler func([]byte, *sync.WaitGroup)
 
 // websocket communications endpoint to the submit server
 type serverEndpoint struct {
@@ -131,7 +131,12 @@ func (e *serverEndpoint) readLoop(wg *sync.WaitGroup) {
 			logger.WithError(err).Warnf("invalid message sent from server at %s. Error parsing websocket message: %v", e.url, err)
 			continue
 		}
-		go e.handlers[msg.Type](msg.Payload)
+		if e.handlers[msg.Type] == nil {
+			logger.WithError(err).Warnf("invalid message sent form server at %s. No handler for message with type == %s", e.url, msg.Type)
+			continue
+		}
+		wg.Add(1)
+		go e.handlers[msg.Type](msg.Payload, wg)
 	}
 }
 

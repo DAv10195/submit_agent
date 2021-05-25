@@ -65,6 +65,10 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 			cfg.SubmitFsUser = viper.GetString(flagFileServerUser)
 			cfg.SubmitFsPassword = viper.GetString(flagFileServerPassword)
 			cfg.CacheDir = viper.GetString(flagCacheDir)
+			cfg.MaxRunningTasks = viper.GetInt(flagMaxRunningTasks)
+			if cfg.MaxRunningTasks <= 0 {
+				logger.Warn("max running tasks is <= 0. No Limit will be imposed on the number of tasks executed in parallel")
+			}
 			cfg.ConfFile = configFilePath
 			submitAgent, err := agent.NewAgent(cfg)
 			if err != nil {
@@ -107,6 +111,7 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 	viper.SetDefault(flagFileServerUser, defUser)
 	viper.SetDefault(flagFileServerPassword, defPassword)
 	viper.SetDefault(flagCacheDir, path.GetDefaultCacheDirPath())
+	viper.SetDefault(flagMaxRunningTasks, defMaxRunningTasks)
 	startCmd.Flags().AddFlagSet(configFlagSet)
 	startCmd.Flags().Int(flagLogFileMaxBackups, viper.GetInt(flagLogFileMaxBackups), "maximum number of log file rotations")
 	startCmd.Flags().Int(flagLogFileMaxSize, viper.GetInt(flagLogFileMaxSize), "maximum size of the log file before it's rotated")
@@ -123,6 +128,7 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 	startCmd.Flags().String(flagFileServerUser, viper.GetString(flagFileServerUser), "user to be used when authenticating against submit file server")
 	startCmd.Flags().String(flagFileServerPassword, viper.GetString(flagFileServerPassword), "password to be used when authenticating against submit file server")
 	startCmd.Flags().String(flagCacheDir, viper.GetString(flagCacheDir), "path to the cache dir which will be used by the submit agent")
+	startCmd.Flags().Int(flagMaxRunningTasks, viper.GetInt(flagMaxRunningTasks), "max number of running tasks allowed to run in parallel (set to <= 0 for no limit)")
 	if err := viper.ReadInConfig(); err != nil && !os.IsNotExist(err) {
 		setupErr = err
 	}
