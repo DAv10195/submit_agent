@@ -107,7 +107,7 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 	viper.SetDefault(flagServerUser, defUser)
 	viper.SetDefault(flagServerPassword, defPassword)
 	viper.SetDefault(flagFileServerHost, defHost)
-	viper.SetDefault(flagFileServerPort, defPort)
+	viper.SetDefault(flagFileServerPort, defFsPort)
 	viper.SetDefault(flagFileServerUser, defUser)
 	viper.SetDefault(flagFileServerPassword, defPassword)
 	viper.SetDefault(flagCacheDir, path.GetDefaultCacheDirPath())

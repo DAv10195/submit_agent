@@ -13,7 +13,8 @@ const (
 	defMaxLogFileBackups	= 3
 	deLogFileAndStdOut		= false
 	defHost					= "localhost"
-	defPort					= 80
+	defPort					= 8080
+	defFsPort				= 8081
 	defUser					= "admin"
 	defPassword				= "admin"
 	defMaxRunningTasks		= 10
