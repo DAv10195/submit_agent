@@ -123,7 +123,7 @@ func (a *Agent) readConfLines() ([]string, error) {
 }
 
 func (a *Agent) writeConfLines(confLines []string) error {
-	confFile, err := os.Open(a.config.ConfFile)
+	confFile, err := os.Create(a.config.ConfFile)
 	if err != nil {
 		return err
 	}
