@@ -39,7 +39,7 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 	tr := &submitws.TaskResponse{Handler: task.ResponseHandler, Task: task.ID}
 	te := &execution.TaskExecution{Command: task.Command, Timeout: task.Timeout, Dependencies: task.Dependencies, FsHost: a.config.SubmitFsHost, FsPort: a.config.SubmitFsPort, FsUser: a.config.SubmitFsUser, FsPassword: a.config.SubmitFsPassword, Encryption: a.encryption}
 	logger.Infof("executing task: %s", string(payload))
-	output, err := te.Execute()
+	output, err := te.Execute(false)
 	if err != nil {
 		logger.WithError(err).Errorf("error executing task with id == %s", task.ID)
 		tr.Status = submitws.TaskRespExecStatusErr

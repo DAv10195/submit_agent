@@ -26,7 +26,7 @@ type TaskExecution struct {
 	FsPassword		string
 }
 
-func (e *TaskExecution) Execute() (string, error) {
+func (e *TaskExecution) Execute(testRun bool) (string, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cmd := getCommand(ctx, e.Command)
@@ -41,17 +41,19 @@ func (e *TaskExecution) Execute() (string, error) {
 			logger.WithError(err).Errorf("error removing task execution working directory [ %s ]", workingDir)
 		}
 	}()
-	fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("http://%s:%d", e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption)
-	if err != nil {
-		return "", err
-	}
-	for _, fsPath := range e.Dependencies.Slice() {
-		f, err := os.Create(filepath.Join(workingDir, filepath.Base(fsPath)))
+	if !testRun {
+		fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("http://%s:%d", e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption)
 		if err != nil {
 			return "", err
 		}
-		if _, err := fsc.DownloadFile(fsPath, f); err != nil {
-			return "", err
+		for _, fsPath := range e.Dependencies.Slice() {
+			f, err := os.Create(filepath.Join(workingDir, filepath.Base(fsPath)))
+			if err != nil {
+				return "", err
+			}
+			if _, err := fsc.DownloadFile(fsPath, f); err != nil {
+				return "", err
+			}
 		}
 	}
 	cmd.Dir = workingDir
@@ -98,7 +100,7 @@ func (e *TaskExecution) Execute() (string, error) {
 	if err := jobObjHandler.assignCmdToJobObj(cmd); err != nil {
 		logger.WithError(err).Error("error assigning command to job object")
 	}
-	err = cmd.Wait()
+	err := cmd.Wait()
 	if err != nil {
 		return "", err
 	}

@@ -11,7 +11,7 @@ func TestTaskExec(t *testing.T) {
 		Timeout:      60,
 		Dependencies: nil,
 	}
-	output, err := te.Execute()
+	output, err := te.Execute(true)
 	if err != nil {
 		t.Fatalf("error executing task for test: %v", err)
 	}
