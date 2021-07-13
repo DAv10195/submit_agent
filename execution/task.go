@@ -6,6 +6,8 @@ import (
 	"fmt"
 	commons "github.com/DAv10195/submit_commons"
 	"github.com/DAv10195/submit_commons/containers"
+	"github.com/DAv10195/submit_commons/encryption"
+	"github.com/DAv10195/submit_commons/fsclient"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,14 +19,19 @@ type TaskExecution struct {
 	Command			string
 	Timeout			int
 	Dependencies	*containers.StringSet
+	Encryption		encryption.Encryption
+	FsHost			string
+	FsPort			int
+	FsUser			string
+	FsPassword		string
 }
 
 func (e *TaskExecution) Execute() (string, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cmd := getCommand(ctx, e.Command)
-	// TODO: download all dependencies from File Server and put them in the working directory below
-	workingDir := filepath.Join(os.TempDir(), fmt.Sprintf("submit_agent_exec_%s", commons.GenerateUniqueId()))
+	workDir := fmt.Sprintf("submit_agent_exec_%s", commons.GenerateUniqueId())
+	workingDir := filepath.Join(os.TempDir(), workDir)
 	if err := os.MkdirAll(workingDir, 0700); err != nil {
 		logger.WithError(err).Errorf("error creating task execution working directory [ %s ]", workingDir)
 		return "", err
@@ -34,6 +41,19 @@ func (e *TaskExecution) Execute() (string, error) {
 			logger.WithError(err).Errorf("error removing task execution working directory [ %s ]", workingDir)
 		}
 	}()
+	fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("http://%s:%d", e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption)
+	if err != nil {
+		return "", err
+	}
+	for _, fsPath := range e.Dependencies.Slice() {
+		f, err := os.Create(filepath.Join(workingDir, filepath.Base(fsPath)))
+		if err != nil {
+			return "", err
+		}
+		if _, err := fsc.DownloadFile(fsPath, f); err != nil {
+			return "", err
+		}
+	}
 	cmd.Dir = workingDir
 	var output bytes.Buffer
 	cmd.Stdout = &output
@@ -78,7 +98,10 @@ func (e *TaskExecution) Execute() (string, error) {
 	if err := jobObjHandler.assignCmdToJobObj(cmd); err != nil {
 		logger.WithError(err).Error("error assigning command to job object")
 	}
-	err := cmd.Wait()
+	err = cmd.Wait()
+	if err != nil {
+		return "", err
+	}
 	if timer != nil {
 		timer.Stop()
 	}

@@ -37,7 +37,7 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 	atomic.AddInt64(&a.numRunningTasks, 1)
 	defer atomic.AddInt64(&a.numRunningTasks, -1)
 	tr := &submitws.TaskResponse{Handler: task.ResponseHandler, Task: task.ID}
-	te := &execution.TaskExecution{Command: task.Command, Timeout: task.Timeout, Dependencies: task.Dependencies}
+	te := &execution.TaskExecution{Command: task.Command, Timeout: task.Timeout, Dependencies: task.Dependencies, FsHost: a.config.SubmitFsHost, FsPort: a.config.SubmitFsPort, FsUser: a.config.SubmitFsUser, FsPassword: a.config.SubmitFsPassword, Encryption: a.encryption}
 	logger.Infof("executing task: %s", string(payload))
 	output, err := te.Execute()
 	if err != nil {
