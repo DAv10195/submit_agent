@@ -29,4 +29,6 @@ const (
 	queue					= "queue"
 	maxMsgBatchFromQueue	= 10
 	sendQueueInterval		= 3 * time.Second
+
+	mossLinkPrefix			= "http://moss.stanford.edu/results/"
 )

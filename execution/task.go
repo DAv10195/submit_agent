@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	commons "github.com/DAv10195/submit_commons"
+	"github.com/DAv10195/submit_commons/archive"
 	"github.com/DAv10195/submit_commons/containers"
 	"github.com/DAv10195/submit_commons/encryption"
 	"github.com/DAv10195/submit_commons/fsclient"
@@ -24,6 +25,30 @@ type TaskExecution struct {
 	FsPort			int
 	FsUser			string
 	FsPassword		string
+	ExtractPaths	bool
+}
+
+func (e *TaskExecution) downloadAndExtract(workingDir string) error {
+	fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("http://%s:%d", e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption)
+	if err != nil {
+		return err
+	}
+	for _, fsPath := range e.Dependencies.Slice() {
+		f, err := os.Create(filepath.Join(workingDir, fmt.Sprintf("%s.tar.gz", filepath.Base(fsPath))))
+		if err != nil {
+			return err
+		}
+		if _, err := fsc.DownloadFile(fsPath, f); err != nil {
+			return err
+		}
+		if err := archive.Extract(filepath.Join(workingDir, fsPath), logger, f); err != nil {
+			return err
+		}
+		if err := f.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *TaskExecution) Execute(testRun bool) (string, error) {
@@ -42,17 +67,23 @@ func (e *TaskExecution) Execute(testRun bool) (string, error) {
 		}
 	}()
 	if !testRun {
-		fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("http://%s:%d", e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption)
-		if err != nil {
-			return "", err
-		}
-		for _, fsPath := range e.Dependencies.Slice() {
-			f, err := os.Create(filepath.Join(workingDir, filepath.Base(fsPath)))
+		if e.ExtractPaths {
+			if err := e.downloadAndExtract(workingDir); err != nil {
+				return "", err
+			}
+		} else {
+			fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("http://%s:%d", e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption)
 			if err != nil {
 				return "", err
 			}
-			if _, err := fsc.DownloadFile(fsPath, f); err != nil {
-				return "", err
+			for _, fsPath := range e.Dependencies.Slice() {
+				f, err := os.Create(filepath.Join(workingDir, filepath.Base(fsPath)))
+				if err != nil {
+					return "", err
+				}
+				if _, err := fsc.DownloadFile(fsPath, f); err != nil {
+					return "", err
+				}
 			}
 		}
 	}

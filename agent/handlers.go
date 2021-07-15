@@ -36,7 +36,7 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 	}
 	atomic.AddInt64(&a.numRunningTasks, 1)
 	defer atomic.AddInt64(&a.numRunningTasks, -1)
-	tr := &submitws.TaskResponse{Handler: task.ResponseHandler, Task: task.ID}
+	tr := &submitws.TaskResponse{Handler: task.ResponseHandler, Task: task.ID, Labels: task.Labels}
 	te := &execution.TaskExecution{Command: task.Command, Timeout: task.Timeout, Dependencies: task.Dependencies, FsHost: a.config.SubmitFsHost, FsPort: a.config.SubmitFsPort, FsUser: a.config.SubmitFsUser, FsPassword: a.config.SubmitFsPassword, Encryption: a.encryption}
 	logger.Infof("executing task: %s", string(payload))
 	output, err := te.Execute(false)
@@ -46,8 +46,22 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 		tr.Payload = fmt.Sprintf("error executing task: %v", err)
 	} else {
 		logger.Infof("successfully executed task with id == %s", task.ID)
-		tr.Status = submitws.TaskRespExecStatusOk
-		tr.Payload = output
+		outRule := outputRules[task.ResponseHandler]
+		if outRule != nil {
+			logger.Debugf("applying output rule '%s'", task.ResponseHandler)
+			output, err = outRule(output, task.Labels)
+			if err != nil {
+				logger.WithError(err).Errorf("error applying output rule '%s'", task.ResponseHandler)
+				tr.Status = submitws.TaskRespExecStatusErr
+				tr.Payload = fmt.Sprintf("error applying output rule '%s': %v", task.ResponseHandler, err)
+			} else {
+				tr.Status = submitws.TaskRespExecStatusOk
+				tr.Payload = output
+			}
+		} else {
+			tr.Status = submitws.TaskRespExecStatusOk
+			tr.Payload = output
+		}
 	}
 	logger.Infof("queueing task with id == %s for sending", task.ID)
 	if _, err := a.messageQueue.EnqueueObjectAsJSON(tr); err != nil {
