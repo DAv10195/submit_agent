@@ -18,6 +18,8 @@ const (
 	defUser					= "admin"
 	defPassword				= "admin"
 	defMaxRunningTasks		= 10
+	defMossParserHost		= "localhost"
+	defMossParserPort		= 4567
 
 	flagConfigFile        	= "config-file"
 	flagLogLevel          	= "log-level"
@@ -39,4 +41,7 @@ const (
 	flagFileServerPassword	= "submit-file-server-password"
 
 	flagMaxRunningTasks		= "max-running-tasks"
+
+	flagMossParserHost		= "moss-parser-host"
+	flagMossParserPort		= "moss-parser-port"
 )

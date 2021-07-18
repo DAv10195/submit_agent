@@ -13,4 +13,6 @@ type Config struct {
 	CacheDir				string
 	ConfFile				string
 	MaxRunningTasks			int
+	MossParserHost			string
+	MossParserPort			int
 }

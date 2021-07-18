@@ -23,7 +23,7 @@ func readOutputLines(output string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-func mossOutputRule(output string, labels map[string]interface{}) (string, error) {
+func (a *Agent) mossOutputRule(output string, labels map[string]interface{}) (string, error) {
 	lines, err := readOutputLines(output)
 	if err != nil {
 		return "", err
@@ -39,7 +39,7 @@ func mossOutputRule(output string, labels map[string]interface{}) (string, error
 		return "", fmt.Errorf("mo moss link found in output: %s", output)
 	}
 	labels[commons.MossLink] = mossLink
-	r, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:4567/parse?url=%s", mossLink), nil)
+	r, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/parse?url=%s", a.config.MossParserHost, a.config.MossParserPort, mossLink), nil)
 	if err != nil {
 		return "", err
 	}
@@ -73,5 +73,4 @@ func mossOutputRule(output string, labels map[string]interface{}) (string, error
 
 func init() {
 	outputRules = make(map[string]outputRule)
-	outputRules[commons.Moss] = mossOutputRule
 }

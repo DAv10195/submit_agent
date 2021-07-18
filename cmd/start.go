@@ -66,6 +66,8 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 			cfg.SubmitFsPassword = viper.GetString(flagFileServerPassword)
 			cfg.CacheDir = viper.GetString(flagCacheDir)
 			cfg.MaxRunningTasks = viper.GetInt(flagMaxRunningTasks)
+			cfg.MossParserHost = viper.GetString(flagMossParserHost)
+			cfg.MossParserPort = viper.GetInt(flagMossParserPort)
 			if cfg.MaxRunningTasks <= 0 {
 				logger.Warn("max running tasks is <= 0. No Limit will be imposed on the number of tasks executed in parallel")
 			}
@@ -112,6 +114,8 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 	viper.SetDefault(flagFileServerPassword, defPassword)
 	viper.SetDefault(flagCacheDir, path.GetDefaultCacheDirPath())
 	viper.SetDefault(flagMaxRunningTasks, defMaxRunningTasks)
+	viper.SetDefault(flagMossParserHost, defMossParserHost)
+	viper.SetDefault(flagMossParserPort, defMossParserPort)
 	startCmd.Flags().AddFlagSet(configFlagSet)
 	startCmd.Flags().Int(flagLogFileMaxBackups, viper.GetInt(flagLogFileMaxBackups), "maximum number of log file rotations")
 	startCmd.Flags().Int(flagLogFileMaxSize, viper.GetInt(flagLogFileMaxSize), "maximum size of the log file before it's rotated")
@@ -129,6 +133,8 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 	startCmd.Flags().String(flagFileServerPassword, viper.GetString(flagFileServerPassword), "password to be used when authenticating against submit file server")
 	startCmd.Flags().String(flagCacheDir, viper.GetString(flagCacheDir), "path to the cache dir which will be used by the submit agent")
 	startCmd.Flags().Int(flagMaxRunningTasks, viper.GetInt(flagMaxRunningTasks), "max number of running tasks allowed to run in parallel (set to <= 0 for no limit)")
+	startCmd.Flags().String(flagMossParserHost, viper.GetString(flagMossParserHost), "moss parser host")
+	startCmd.Flags().Int(flagMossParserPort, viper.GetInt(flagMossParserPort), "moss parser port")
 	if err := viper.ReadInConfig(); err != nil && !os.IsNotExist(err) {
 		setupErr = err
 	}

@@ -93,7 +93,8 @@ func TestMossOutputRule(t *testing.T) {
 	timer.Stop()
 	labels := make(map[string]interface{})
 	labels[commons.MossLink] = ""
-	if _, err := mossOutputRule(output.String(), labels); err != nil {
+	a := &Agent{config: &Config{MossParserHost: "localhost", MossParserPort: 4567}}
+	if _, err := a.mossOutputRule(output.String(), labels); err != nil {
 		t.Fatalf("error applying moss output rule: %v", err)
 	}
 	if labels[commons.MossLink].(string) == "" {

@@ -53,6 +53,7 @@ func NewAgent(cfg *Config) (*Agent, error) {
 	if err := a.resolveAgentId(filepath.Join(cfg.CacheDir, agentIdFileName)); err != nil {
 		return nil, fmt.Errorf("error resolving agent id: %v", err)
 	}
+	outputRules[commons.Moss] = a.mossOutputRule
 	return a, nil
 }
 
