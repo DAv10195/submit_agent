@@ -34,14 +34,28 @@ func (e *TaskExecution) downloadAndExtract(workingDir string) error {
 		return err
 	}
 	for _, fsPath := range e.Dependencies.Slice() {
-		f, err := os.Create(filepath.Join(workingDir, fmt.Sprintf("%s.tar.gz", filepath.Base(fsPath))))
+		tarGzPath := filepath.Join(workingDir, fmt.Sprintf("%s.tar.gz", filepath.Base(fsPath)))
+		f, err := os.Create(tarGzPath)
 		if err != nil {
 			return err
 		}
 		if _, err := fsc.DownloadFile(fsPath, f); err != nil {
+			if _err := f.Close(); _err != nil {
+				return fmt.Errorf("error closing file [ %v ] after different error: %v", _err, err)
+			}
 			return err
 		}
-		if err := archive.Extract(filepath.Join(workingDir, fsPath), logger, f); err != nil {
+		if err := f.Close(); err != nil {
+			return err
+		}
+		f, err = os.Open(tarGzPath)
+		if err != nil {
+			return err
+		}
+		if err := archive.Extract(workingDir, logger, f); err != nil {
+			if _err := f.Close(); _err != nil {
+				return fmt.Errorf("error closing file [ %v ] after different error: %v", _err, err)
+			}
 			return err
 		}
 		if err := f.Close(); err != nil {

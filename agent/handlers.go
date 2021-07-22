@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/DAv10195/submit_agent/execution"
+	commons "github.com/DAv10195/submit_commons"
 	submitws "github.com/DAv10195/submit_commons/websocket"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -36,8 +38,19 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 	}
 	atomic.AddInt64(&a.numRunningTasks, 1)
 	defer atomic.AddInt64(&a.numRunningTasks, -1)
+	if task.ResponseHandler == commons.Moss {
+		task.Command = strings.ReplaceAll(task.Command, commons.MossPathPlaceHolder, a.config.MossPath)
+	}
 	tr := &submitws.TaskResponse{Handler: task.ResponseHandler, Task: task.ID, Labels: task.Labels}
 	te := &execution.TaskExecution{Command: task.Command, Timeout: task.Timeout, Dependencies: task.Dependencies, FsHost: a.config.SubmitFsHost, FsPort: a.config.SubmitFsPort, FsUser: a.config.SubmitFsUser, FsPassword: a.config.SubmitFsPassword, Encryption: a.encryption}
+	if ep, ok := task.Labels[commons.ExtractPaths]; ok {
+		extractPaths, ok := ep.(bool)
+		if ok {
+			te.ExtractPaths = extractPaths
+		} else {
+			logger.Errorf("invalid value found in task ('%s') for label '%s': %v", task.ID, commons.ExtractPaths, extractPaths)
+		}
+	}
 	logger.Infof("executing task: %s", string(payload))
 	output, err := te.Execute(false)
 	if err != nil {
@@ -49,7 +62,7 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 		outRule := outputRules[task.ResponseHandler]
 		if outRule != nil {
 			logger.Debugf("applying output rule '%s'", task.ResponseHandler)
-			output, err = outRule(output, task.Labels)
+			output, labels, err := outRule(output, task.Labels)
 			if err != nil {
 				logger.WithError(err).Errorf("error applying output rule '%s'", task.ResponseHandler)
 				tr.Status = submitws.TaskRespExecStatusErr
@@ -57,6 +70,9 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 			} else {
 				tr.Status = submitws.TaskRespExecStatusOk
 				tr.Payload = output
+				if labels != nil {
+					tr.Labels = labels
+				}
 			}
 		} else {
 			tr.Status = submitws.TaskRespExecStatusOk

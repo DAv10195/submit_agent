@@ -15,4 +15,5 @@ type Config struct {
 	MaxRunningTasks			int
 	MossParserHost			string
 	MossParserPort			int
+	MossPath				string
 }

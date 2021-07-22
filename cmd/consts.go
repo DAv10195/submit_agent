@@ -20,6 +20,7 @@ const (
 	defMaxRunningTasks		= 10
 	defMossParserHost		= "localhost"
 	defMossParserPort		= 4567
+	defMossPath				= "/usr/local/bin/moss"
 
 	flagConfigFile        	= "config-file"
 	flagLogLevel          	= "log-level"
@@ -44,4 +45,5 @@ const (
 
 	flagMossParserHost		= "moss-parser-host"
 	flagMossParserPort		= "moss-parser-port"
+	flagMossPath			= "moss-path"
 )
