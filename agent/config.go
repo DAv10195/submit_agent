@@ -16,4 +16,7 @@ type Config struct {
 	MossParserHost			string
 	MossParserPort			int
 	MossPath				string
+	TrustedCaFilePath		string
+	SkipTlsVerify			bool
+	UseTls					bool
 }

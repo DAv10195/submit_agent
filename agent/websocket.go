@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"github.com/DAv10195/submit_commons/encryption"
@@ -25,6 +26,7 @@ type serverEndpoint struct {
 	encryption encryption.Encryption
 	connected  bool
 	handlers   map[string]serverMessageHandler
+	tlsConf	   *tls.Config
 }
 
 // connect to the submit server. This method should be called only from the connect method as it is unsynchronized
@@ -36,7 +38,7 @@ func (e *serverEndpoint) _connect() error {
 	header := http.Header{}
 	header.Set(authorization, fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", e.user, decryptedPassword)))))
 	header.Set(submitws.AgentIdHeader, e.id)
-	dialer := websocket.Dialer{HandshakeTimeout: connTimeout}
+	dialer := websocket.Dialer{HandshakeTimeout: connTimeout, TLSClientConfig: e.tlsConf}
 	var resp *http.Response
 	e.conn, resp, err = dialer.Dial(e.url, header)
 	if err != nil {

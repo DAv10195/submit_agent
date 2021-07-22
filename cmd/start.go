@@ -69,6 +69,9 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 			cfg.MossParserHost = viper.GetString(flagMossParserHost)
 			cfg.MossParserPort = viper.GetInt(flagMossParserPort)
 			cfg.MossPath = viper.GetString(flagMossPath)
+			cfg.TrustedCaFilePath = viper.GetString(flagTrustedCaFile)
+			cfg.SkipTlsVerify = viper.GetBool(flagSkipTlsVerify)
+			cfg.UseTls = viper.GetBool(flagUseTls)
 			if cfg.MaxRunningTasks <= 0 {
 				logger.Warn("max running tasks is <= 0. No Limit will be imposed on the number of tasks executed in parallel")
 			}
@@ -118,6 +121,8 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 	viper.SetDefault(flagMossParserHost, defMossParserHost)
 	viper.SetDefault(flagMossParserPort, defMossParserPort)
 	viper.SetDefault(flagMossPath, defMossPath)
+	viper.SetDefault(flagSkipTlsVerify, defSkipTlsVerify)
+	viper.SetDefault(flagUseTls, defUseTls)
 	startCmd.Flags().AddFlagSet(configFlagSet)
 	startCmd.Flags().Int(flagLogFileMaxBackups, viper.GetInt(flagLogFileMaxBackups), "maximum number of log file rotations")
 	startCmd.Flags().Int(flagLogFileMaxSize, viper.GetInt(flagLogFileMaxSize), "maximum size of the log file before it's rotated")
@@ -138,6 +143,9 @@ func newStartCommand(ctx context.Context, args []string) *cobra.Command {
 	startCmd.Flags().String(flagMossParserHost, viper.GetString(flagMossParserHost), "moss parser host")
 	startCmd.Flags().Int(flagMossParserPort, viper.GetInt(flagMossParserPort), "moss parser port")
 	startCmd.Flags().String(flagMossPath, viper.GetString(flagMossPath), "moss path")
+	startCmd.Flags().Bool(flagSkipTlsVerify, viper.GetBool(flagSkipTlsVerify), "skip tls verification")
+	startCmd.Flags().String(flagTrustedCaFile, viper.GetString(flagTrustedCaFile), "trusted ca bundle path")
+	startCmd.Flags().Bool(flagUseTls, viper.GetBool(flagUseTls), "use tls")
 	if err := viper.ReadInConfig(); err != nil && !os.IsNotExist(err) {
 		setupErr = err
 	}

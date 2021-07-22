@@ -42,7 +42,7 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 		task.Command = strings.ReplaceAll(task.Command, commons.MossPathPlaceHolder, a.config.MossPath)
 	}
 	tr := &submitws.TaskResponse{Handler: task.ResponseHandler, Task: task.ID, Labels: task.Labels}
-	te := &execution.TaskExecution{Command: task.Command, Timeout: task.Timeout, Dependencies: task.Dependencies, FsHost: a.config.SubmitFsHost, FsPort: a.config.SubmitFsPort, FsUser: a.config.SubmitFsUser, FsPassword: a.config.SubmitFsPassword, Encryption: a.encryption}
+	te := &execution.TaskExecution{Command: task.Command, Timeout: task.Timeout, Dependencies: task.Dependencies, FsHost: a.config.SubmitFsHost, FsPort: a.config.SubmitFsPort, FsUser: a.config.SubmitFsUser, FsPassword: a.config.SubmitFsPassword, Encryption: a.encryption, TlsConf: a.tlsConf}
 	if ep, ok := task.Labels[commons.ExtractPaths]; ok {
 		extractPaths, ok := ep.(bool)
 		if ok {

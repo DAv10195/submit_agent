@@ -21,6 +21,8 @@ const (
 	defMossParserHost		= "localhost"
 	defMossParserPort		= 4567
 	defMossPath				= "/usr/local/bin/moss"
+	defSkipTlsVerify		= false
+	defUseTls				= false
 
 	flagConfigFile        	= "config-file"
 	flagLogLevel          	= "log-level"
@@ -46,4 +48,8 @@ const (
 	flagMossParserHost		= "moss-parser-host"
 	flagMossParserPort		= "moss-parser-port"
 	flagMossPath			= "moss-path"
+
+	flagTrustedCaFile		= "trusted-ca-file"
+	flagSkipTlsVerify		= "skip-tls-verify"
+	flagUseTls				= "use-tls"
 )

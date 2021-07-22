@@ -3,6 +3,8 @@ package agent
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	commons "github.com/DAv10195/submit_commons"
@@ -29,6 +31,7 @@ type Agent struct {
 	numRunningTasks		int64
 	maxTasksSemaphore	chan struct{}
 	messageQueue		*goque.Queue
+	tlsConf				*tls.Config
 }
 
 // create a new agent
@@ -54,7 +57,30 @@ func NewAgent(cfg *Config) (*Agent, error) {
 		return nil, fmt.Errorf("error resolving agent id: %v", err)
 	}
 	outputRules[commons.Moss] = a.mossOutputRule
+	if err := a.getTlsConfig(); err != nil {
+		return nil, fmt.Errorf("error getting tls config: %v", err)
+	}
 	return a, nil
+}
+
+func (a *Agent) getTlsConfig() error {
+	if !a.config.UseTls {
+		return nil
+	}
+	tlsConf := &tls.Config{InsecureSkipVerify: a.config.SkipTlsVerify}
+	if a.config.TrustedCaFilePath != "" {
+		caCerts, err := ioutil.ReadFile(a.config.TrustedCaFilePath)
+		if err != nil {
+			return err
+		}
+		caCertsPool := x509.NewCertPool()
+		if !caCertsPool.AppendCertsFromPEM(caCerts) {
+			return fmt.Errorf("no certs could be parsed from '%s'", a.config.TrustedCaFilePath)
+		}
+		tlsConf.RootCAs = caCertsPool
+	}
+	a.tlsConf = tlsConf
+	return nil
 }
 
 // encrypt passwords in memory and in the config file, if required
@@ -306,8 +332,13 @@ func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 			logger.WithError(err).Error("error closing message queue")
 		}
 	}()
-	// TODO: add option for TLS
-	url := fmt.Sprintf("ws://%s:%d/%s/endpoint", a.config.SubmitServerHost, a.config.SubmitServerPort, submitws.Agents)
+	var protocol string
+	if a.tlsConf != nil {
+		protocol = "wss"
+	} else {
+		protocol = "ws"
+	}
+	url := fmt.Sprintf("%s://%s:%d/%s/endpoint", protocol, a.config.SubmitServerHost, a.config.SubmitServerPort, submitws.Agents)
 	a.endpoint = &serverEndpoint{
 		id: a.id,
 		url: url,
@@ -316,6 +347,7 @@ func (a *Agent) Run(ctx context.Context, wg *sync.WaitGroup) {
 		password: a.config.SubmitServerPassword,
 		encryption: a.encryption,
 		handlers: a.handlers(),
+		tlsConf: a.tlsConf,
 	}
 	agentWg := &sync.WaitGroup{}
 	defer agentWg.Wait()

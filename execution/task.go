@@ -3,6 +3,7 @@ package execution
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	commons "github.com/DAv10195/submit_commons"
 	"github.com/DAv10195/submit_commons/archive"
@@ -26,10 +27,17 @@ type TaskExecution struct {
 	FsUser			string
 	FsPassword		string
 	ExtractPaths	bool
+	TlsConf			*tls.Config
 }
 
 func (e *TaskExecution) downloadAndExtract(workingDir string) error {
-	fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("http://%s:%d", e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption)
+	var protocol string
+	if e.TlsConf != nil {
+		protocol = "https"
+	} else {
+		protocol = "http"
+	}
+	fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("%s://%s:%d", protocol, e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption, e.TlsConf)
 	if err != nil {
 		return err
 	}
@@ -86,7 +94,13 @@ func (e *TaskExecution) Execute(testRun bool) (string, error) {
 				return "", err
 			}
 		} else {
-			fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("http://%s:%d", e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption)
+			var protocol string
+			if e.TlsConf != nil {
+				protocol = "https"
+			} else {
+				protocol = "http"
+			}
+			fsc, err := fsclient.NewFileServerClient(fmt.Sprintf("%s://%s:%d", protocol, e.FsHost, e.FsPort), e.FsUser, e.FsPassword, logger, e.Encryption, e.TlsConf)
 			if err != nil {
 				return "", err
 			}
