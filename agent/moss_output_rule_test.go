@@ -21,16 +21,30 @@ const javaCode = `public class HelloWorld{
 `
 
 func TestMossOutputRule(t *testing.T) {
-	mossParserContext, mossParserCancel := context.WithCancel(context.Background())
-	mossParserCommand := exec.CommandContext(mossParserContext, "sh", "-c", fmt.Sprintf("java -jar mossparser.jar"))
-	mossParserCommand.Dir = os.Getenv("MOSSPARSER_HOME")
+	tmpDir := os.TempDir()
+	cloneCtx, cloneCtxCancel := context.WithCancel(context.Background())
+	cloneCmd := exec.CommandContext(cloneCtx, "sh", "-c", fmt.Sprintf("git clone https://github.com/DAv10195/moss-api.git"))
+	cloneCmd.Dir = tmpDir
+	if err := cloneCmd.Start(); err != nil {
+		t.Fatalf("error starting command for test: %v", err)
+	}
+	mossParserHome := filepath.Join(tmpDir, "moss-api")
 	defer func() {
-		mossParserCancel()
+		cloneCtxCancel()
+		if err := os.RemoveAll(mossParserHome); err != nil {
+			panic(err)
+		}
 	}()
+	if err := cloneCmd.Wait(); err != nil {
+		t.Fatalf("error waiting for command for test: %v", err)
+	}
+	mossParserContext, mossParserCancel := context.WithCancel(context.Background())
+	mossParserCommand := exec.CommandContext(mossParserContext, "sh", "-c", "java -jar mossparser.jar")
+	mossParserCommand.Dir = mossParserHome
+	defer mossParserCancel()
 	if err := mossParserCommand.Start(); err != nil {
 		t.Fatalf("error starting command for test: %v", err)
 	}
-	tmpDir := os.TempDir()
 	dir1, dir2 := filepath.Join(tmpDir, "mossdir1"), filepath.Join(tmpDir, "mossdir2")
 	if err := os.MkdirAll(dir1, 0700); err != nil {
 		t.Fatalf("error creating dir for test: %v", err)
@@ -44,7 +58,7 @@ func TestMossOutputRule(t *testing.T) {
 		t.Fatalf("error creating dir for test: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(dir1); err != nil {
+		if err := os.RemoveAll(dir2); err != nil {
 			panic(err)
 		}
 	}()
