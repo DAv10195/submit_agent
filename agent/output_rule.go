@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// an output rule is applied to task output to perform some transformation
 type outputRule func (string, map[string]interface{}) (string, map[string]interface{}, error)
 
 var outputRules map[string]outputRule
@@ -23,6 +24,8 @@ func readOutputLines(output string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
+// an output rule for copy detection, which extracts the moss url returned by the moss task, sending it to the moss
+// moss parser service which will in turn return the report in the url in json format
 func (a *Agent) mossOutputRule(output string, labels map[string]interface{}) (string, map[string]interface{}, error) {
 	lines, err := readOutputLines(output)
 	if err != nil {

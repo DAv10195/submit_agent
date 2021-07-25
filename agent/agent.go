@@ -63,6 +63,7 @@ func NewAgent(cfg *Config) (*Agent, error) {
 	return a, nil
 }
 
+// return a TLS config to be used by the agent for communication with the submit server and submit file server
 func (a *Agent) getTlsConfig() error {
 	if !a.config.UseTls {
 		return nil

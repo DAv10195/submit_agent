@@ -23,6 +23,7 @@ func (a *Agent) handleKeepaliveResponse(_ []byte, wg *sync.WaitGroup) {
 	}
 }
 
+// handle a task message
 func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 	defer wg.Done()
 	task := &submitws.Task{}
@@ -38,6 +39,7 @@ func (a *Agent) handleTask(payload []byte, wg *sync.WaitGroup) {
 	}
 	atomic.AddInt64(&a.numRunningTasks, 1)
 	defer atomic.AddInt64(&a.numRunningTasks, -1)
+	// if this is a moss request, then replace the placeholder with the moss path
 	if task.ResponseHandler == commons.Moss {
 		task.Command = strings.ReplaceAll(task.Command, commons.MossPathPlaceHolder, a.config.MossPath)
 	}
