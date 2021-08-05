@@ -2,7 +2,7 @@ package cmd
 
 const (
 	submit					= "submit"
-	submitAgent 			= "submit agent"
+	submitAgent 			= "submit_agent"
 	start					= "start"
 
 	defaultConfigFileName	= "submit_agent.yml"
